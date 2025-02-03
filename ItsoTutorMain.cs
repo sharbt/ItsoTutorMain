@@ -12,18 +12,27 @@ namespace ITSOTutor
     public class ItsoTutorMain
     {
         private readonly ILogger<ItsoTutorMain> _logger;
-        private readonly string oaiEndpoint = "https://sharopenai.openai.azure.com/";
-        private readonly string oaiKey = "e24eb13dac804292abd52a894fcf4650";
-        private static string oaiDeploymentName = "gpt-35-turbo-16k";
-        private readonly string azureSearchEndpoint = "https://sharrgsearch.search.windows.net";
-        private readonly string azureSearchKey = "argijgq84GkIsZMwy2AqrTrP0ZNVd1XksS3G6yJuSEAzSeB1KkGQ";
-        private readonly string azureSearchIndex = "itsospec-index";
+        private readonly string? oaiEndpoint;
+        private readonly string? oaiKey;
+        //private static string oaiDeploymentName = "gpt-35-turbo-16k";
+        private static string oaiDeploymentName = "gpt-4o-mini";
+        private readonly string? azureSearchEndpoint;
+        private readonly string? azureSearchKey;
+        private readonly string? azureSearchIndex;
         private static OpenAIClient client;
         private static AzureSearchChatExtensionConfiguration ownDataConfig;
+        private static string SystemMessage;
+
 
         public ItsoTutorMain(ILogger<ItsoTutorMain> logger)
         {
             _logger = logger;
+            oaiEndpoint = Environment.GetEnvironmentVariable("AZURE_OIA_EP");
+            oaiKey = Environment.GetEnvironmentVariable("AZURE_OIA_KEY");
+            azureSearchEndpoint = Environment.GetEnvironmentVariable("AZURE_SEARCH_EP");
+            azureSearchKey = Environment.GetEnvironmentVariable("AZURE_SEARCH_KEY");
+            azureSearchIndex = Environment.GetEnvironmentVariable("AZURE_SEARCH_INDEX");
+            
             // Initialize the Azure OpenAI client
             client = new OpenAIClient(new Uri(oaiEndpoint), new AzureKeyCredential(oaiKey));
 
@@ -34,6 +43,12 @@ namespace ITSOTutor
                 Authentication = new OnYourDataApiKeyAuthenticationOptions(azureSearchKey),
                 IndexName = azureSearchIndex
             };
+
+            // System message to provide context to the model
+            SystemMessage =
+                "You are an expert assistant in Interoperable Public Transport specifications aka ITSO. " +
+                "Answer using only the provided context from RAG-retrieved documents, focusing on accuracy. " +
+                "If information is missing, politely notify the user.";
         }
 
         [Function("ItsoTutorMain")]
@@ -66,6 +81,7 @@ namespace ITSOTutor
             {
                 Messages =
                 {
+                    new ChatRequestSystemMessage(SystemMessage),
                     new ChatRequestUserMessage(userMessage)
                 },
                 MaxTokens = 600,
